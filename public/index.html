@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>瀹㈣瘔缁熻宸ュ叿 路 浜戠鍏变韩鐗?/title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#1a1a2e;line-height:1.6}
+.header{background:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,0.06);flex-wrap:wrap;gap:8px}
+.header h1{font-size:18px;color:#07C160}
+.header .sub{font-size:12px;color:#999;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.header .badge{display:inline-block;background:#E8F4FD;color:#2B7BD6;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid #2B7BD6}
+.header .syncing{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.tabs{background:#fff;padding:0 24px;display:flex;gap:0;border-bottom:1px solid #eee}
+.tab-btn{padding:12px 20px;border:none;background:none;font-size:14px;cursor:pointer;color:#666;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn.active{color:#07C160;border-bottom-color:#07C160;font-weight:600}
+.tab-btn:hover{color:#07C160}
+.content{max-width:1200px;margin:20px auto;padding:0 20px}
+.page{display:none}
+.page.active{display:block}
+
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.card h3{font-size:16px;color:#333;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f0f0f0}
+.card h3 .tip{font-size:12px;color:#999;font-weight:400;margin-left:8px}
+
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.metric{background:#fff;border-radius:12px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.metric .val{font-size:28px;font-weight:700;color:#07C160}
+.metric .lbl{font-size:12px;color:#999;margin-top:4px}
+
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.form-group label{display:block;font-size:13px;color:#666;margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.form-group input:focus,.form-group select:focus{border-color:#07C160;box-shadow:0 0 0 2px rgba(7,193,96,0.1)}
+.btn{padding:8px 20px;border-radius:8px;border:none;font-size:14px;cursor:pointer;transition:all .2s}
+.btn-primary{background:#07C160;color:#fff}
+.btn-primary:hover{background:#06AD56}
+.btn-outline{background:#fff;border:1px solid #ddd;color:#666}
+.btn-outline:hover{border-color:#07C160;color:#07C160}
+.btn-danger{background:#fff;border:1px solid #fcc;color:#E24B4A}
+.btn-danger:hover{background:#fff0f0}
+.btn-warning{background:#EF9F27;color:#fff}
+.btn-warning:hover{background:#D88A1A}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#F0FAF4;color:#07C160;padding:10px;text-align:left;font-weight:600;border-bottom:2px solid #07C160;white-space:nowrap}
+td{padding:10px;border-bottom:1px solid #eee}
+tr:hover td{background:#fafafa}
+.money{text-align:right;font-weight:600;color:#E24B4A}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap}
+.tag-done{background:#E8F8EF;color:#07C160}
+.tag-pending{background:#FFF0E0;color:#E08030}
+.tag-follow{background:#E8F4FD;color:#2B7BD6}
+
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-box{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.chart-box h4{font-size:14px;color:#333;margin-bottom:12px}
+
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.filter-bar select,.filter-bar input{padding:7px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none;background:#fff}
+.filter-bar select:focus,.filter-bar input:focus{border-color:#07C160}
+
+.empty-state{text-align:center;padding:60px 0;color:#999}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.toolbar .spacer{flex:1}
+
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.error{background:#E24B4A}
+.toast.success{background:#07C160}
+
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal-overlay .box{background:#fff;border-radius:12px;padding:30px;max-width:700px;width:90%;max-height:90vh;overflow-y:auto}
+.modal-overlay .box h3{font-size:18px;margin-bottom:16px}
+
+@media(max-width:768px){
+  .metrics-row{grid-template-columns:repeat(2,1fr)}
+  .chart-row{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>馃搵 瀹㈣瘔缁熻宸ュ叿</h1>
+  <span class="sub">
+    <span style="font-size:12px;color:#999" id="sync-label">浜戠鍏变韩</span>
+    <span class="badge" id="sync-dot">鈼?鍦ㄧ嚎</span>
+    <span class="badge" style="background:#E8F8EF;color:#07C160;border-color:#07C160;margin-left:4px" id="ticket-count-badge">0 鏉″伐鍗?/span>
+    <button class="btn btn-outline" style="padding:4px 12px;font-size:12px" onclick="refreshAll()">馃攧 鍒锋柊鏁版嵁</button>
+  </span>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('entry')">馃摑 宸ュ崟褰曞叆</button>
+  <button class="tab-btn" onclick="switchTab('list')">馃搵 瀹㈣瘔鏄庣粏</button>
+  <button class="tab-btn" onclick="switchTab('analysis')">馃搳 闂鍒嗘瀽</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 缂栬緫寮圭獥 -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="box">
+    <h3>鉁忥笍 缂栬緫瀹㈣瘔宸ュ崟 <span id="edit-ticket-id" style="font-size:13px;color:#999;font-weight:400"></span></h3>
+    <input type="hidden" id="edit-idx">
+    <div class="form-row">
+      <div class="form-group"><label>鏃ユ湡 *</label><input type="date" id="edit-date" required></div>
+      <div class="form-group"><label>鏃堕棿</label><input type="time" id="edit-time" required></div>
+      <div class="form-group"><label>瀹㈣瘔闂ㄥ簵 *</label><input type="text" id="edit-store" list="store-list" required></div>
+      <div class="form-group"><label>瀹㈣瘔鍟嗗搧 *</label><input type="text" id="edit-product" list="product-list" required></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>鍟嗗搧閲嶉噺(鏂?</label><input type="number" id="edit-weight" step="0.1" min="0"></div>
+      <div class="form-group"><label>闂绫诲瀷</label><select id="edit-type"><option>缂烘枻灏戜袱</option><option>璐у搧鎹熷潖</option><option>鍝佽川闂</option><option>鍙戦敊璐у搧</option><option>閰嶉€佸欢璇?/option><option>灏戝彂璐у搧</option><option>閫€娆鹃€€璐?/option><option>鍏朵粬</option></select></div>
+      <div class="form-group"><label>鎵ｆ閲戦(鍏? *</label><input type="number" id="edit-deduct" step="0.01" min="0" required></div>
+      <div class="form-group"><label>澶勭悊鐘舵€?/label><select id="edit-status"><option value="宸茶В鍐?>宸茶В鍐?/option><option value="寰呰窡杩?>寰呰窡杩?/option><option value="宸茶浆浜?>宸茶浆浜?/option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>瀹㈡埛闇€姹?/label><select id="edit-demand"><option>閫€璐ч€€娆?/option><option>鎹㈣揣</option><option>琛ュ彂</option><option>浠呴€€娆?/option><option>閬撴瓑瑙ｉ噴</option><option>鍏朵粬</option></select></div>
+      <div class="form-group"><label>棰濆琛ヨ揣璐圭敤(鍏?</label><input type="number" id="edit-extra" step="0.01" min="0" value="0"></div>
+      <div class="form-group"><label>澶囨敞</label><input type="text" id="edit-note" placeholder="琛ュ厖璇存槑"></div>
+      <div class="form-group"><label>澶勭悊瀹㈡湇</label><select id="edit-agent"><option value="">璇烽€夋嫨</option><option>鎯?/option><option>钄?/option><option>濠?/option><option>鏋?/option><option>绮?/option><option>鍏朵粬瀹㈡湇</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveEdit()" style="flex:1;padding:10px;font-size:15px">馃捑 淇濆瓨淇敼</button>
+      <button class="btn btn-outline" onclick="closeEditModal()" style="flex:1;padding:10px;font-size:15px">鍙栨秷</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ======== 宸ュ崟褰曞叆 ======== -->
+<div class="page active" id="page-entry">
+  <div class="card">
+    <h3>馃摑 鏂板瀹㈣瘔宸ュ崟 <span class="tip">浠庡璇夋敹闆嗙兢涓暣鐞嗗綍鍏?/span></h3>
+    <div class="form-row">
+      <div class="form-group"><label>鏃ユ湡 *</label><input type="date" id="f-date" required></div>
+      <div class="form-group"><label>鏃堕棿</label><input type="time" id="f-time" value="08:00" required></div>
+      <div class="form-group"><label>瀹㈣瘔闂ㄥ簵 *</label><input type="text" id="f-store" placeholder="杈撳叆鎴栭€夋嫨闂ㄥ簵" list="store-list" required></div>
+      <div class="form-group"><label>瀹㈣瘔鍟嗗搧 *</label><input type="text" id="f-product" placeholder="杈撳叆鎴栭€夋嫨鍟嗗搧" list="product-list" required></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>鍟嗗搧閲嶉噺(鏂?</label><input type="number" id="f-weight" placeholder="濡傦細10" step="0.1" min="0"></div>
+      <div class="form-group"><label>闂绫诲瀷</label><select id="f-type"><option>缂烘枻灏戜袱</option><option>璐у搧鎹熷潖</option><option>鍝佽川闂</option><option>鍙戦敊璐у搧</option><option>閰嶉€佸欢璇?/option><option>灏戝彂璐у搧</option><option>閫€娆鹃€€璐?/option><option>鍏朵粬</option></select></div>
+      <div class="form-group"><label>鎵ｆ閲戦(鍏? *</label><input type="number" id="f-deduct" placeholder="0.00" step="0.01" min="0" required></div>
+      <div class="form-group"><label>澶勭悊鐘舵€?/label><select id="f-status"><option value="宸茶В鍐?>宸茶В鍐?/option><option value="寰呰窡杩?>寰呰窡杩?/option><option value="宸茶浆浜?>宸茶浆浜?/option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>瀹㈡埛闇€姹?/label><select id="f-demand"><option>閫€璐ч€€娆?/option><option>鎹㈣揣</option><option>琛ュ彂</option><option>浠呴€€娆?/option><option>閬撴瓑瑙ｉ噴</option><option>鍏朵粬</option></select></div>
+      <div class="form-group"><label>棰濆琛ヨ揣璐圭敤(鍏?</label><input type="number" id="f-extra" placeholder="0.00" step="0.01" min="0" value="0"></div>
+      <div class="form-group"><label>澶囨敞</label><input type="text" id="f-note" placeholder="琛ュ厖璇存槑"></div>
+      <div class="form-group"><label>澶勭悊瀹㈡湇</label><select id="f-agent"><option value="">璇烽€夋嫨</option><option>鎯?/option><option>钄?/option><option>濠?/option><option>鏋?/option><option>绮?/option><option>鍏朵粬瀹㈡湇</option></select></div>
+    </div>
+    <button class="btn btn-primary" onclick="submitTicket()" style="width:100%;margin-top:8px;padding:12px;font-size:15px">鉁?鎻愪氦瀹㈣瘔宸ュ崟</button>
+    <datalist id="store-list"></datalist>
+    <datalist id="product-list"></datalist>
+  </div>
+
+  <div class="metrics-row" id="today-metrics">
+    <div class="metric"><div class="val" id="m-today">-</div><div class="lbl">浠婃棩瀹㈣瘔</div></div>
+    <div class="metric"><div class="val" id="m-deduct" style="color:#E24B4A">-</div><div class="lbl">浠婃棩鎵ｆ鍚堣</div></div>
+    <div class="metric"><div class="val" id="m-solved">-</div><div class="lbl">浠婃棩瑙ｅ喅鐜?/div></div>
+    <div class="metric"><div class="val" id="m-total">-</div><div class="lbl">鏈湀绱</div></div>
+  </div>
+</div>
+
+<!-- ======== 瀹㈣瘔鏄庣粏 ======== -->
+<div class="page" id="page-list">
+  <div class="card">
+    <div class="filter-bar">
+      <label style="font-size:13px;color:#666">鏃ユ湡锛?/label>
+      <input type="date" id="filter-date-start" onchange="renderList()" style="width:140px" title="寮€濮嬫棩鏈?>
+      <span style="font-size:13px;color:#999">鑷?/span>
+      <input type="date" id="filter-date-end" onchange="renderList()" style="width:140px" title="缁撴潫鏃ユ湡">
+      <select id="filter-store" onchange="renderList()"><option value="">鍏ㄩ儴闂ㄥ簵</option></select>
+      <select id="filter-type" onchange="renderList()"><option value="">鍏ㄩ儴绫诲瀷</option></select>
+      <select id="filter-status" onchange="renderList()"><option value="">鍏ㄩ儴鐘舵€?/option><option value="宸茶В鍐?>宸茶В鍐?/option><option value="寰呰窡杩?>寰呰窡杩?/option><option value="宸茶浆浜?>宸茶浆浜?/option></select>
+      <input type="text" id="filter-product" placeholder="鎼滅储鍟嗗搧..." oninput="renderList()" style="width:140px">
+      <button class="btn btn-outline" onclick="renderList()">馃攧 鍒锋柊</button>
+      <span class="spacer"></span>
+      <button class="btn btn-outline" onclick="exportCSV()">馃摜 瀵煎嚭CSV</button>
+      <button class="btn btn-outline" onclick="importCSV()">馃摛 瀵煎叆CSV</button>
+      <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCSVImport(event)">
+    </div>
+    <div id="ticket-table"></div>
+  </div>
+</div>
+
+<!-- ======== 闂鍒嗘瀽 ======== -->
+<div class="page" id="page-analysis">
+  <div class="toolbar">
+    <label style="font-size:14px">閫夋嫨鏃ユ湡鍖洪棿锛?/label>
+    <input type="date" id="analysis-date-start" style="padding:7px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px" title="寮€濮嬫棩鏈?>
+    <span style="font-size:13px;color:#999">鑷?/span>
+    <input type="date" id="analysis-date-end" style="padding:7px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px" title="缁撴潫鏃ユ湡">
+    <button class="btn btn-primary" onclick="renderAnalysis()">馃攳 鏌ヨ</button>
+    <span class="spacer"></span>
+    <button class="btn btn-outline" onclick="exportAnalysisCSV()">馃摜 瀵煎嚭鍒嗘瀽鏁版嵁</button>
+    <button class="btn btn-warning" onclick="generateReport()" title="鐢熸垚鍖呭惈鍏ㄩ儴鍥捐〃鐨勭嫭绔婬TML鏂囦欢锛屽彲鐩存帴鍙戦€佺粰棰嗗鏌ョ湅">馃搳 鐢熸垚鍒嗕韩鎶ュ憡</button>
+  </div>
+
+  <div class="metrics-row" id="analysis-metrics"></div>
+
+  <div class="chart-row">
+    <div class="chart-box"><h4>闂绫诲瀷鍒嗗竷</h4><canvas id="chart-type"></canvas></div>
+    <div class="chart-box"><h4>瀹㈣瘔瓒嬪娍</h4><canvas id="chart-trend"></canvas></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box"><h4>鍚勯棬搴楀璇夋暟閲?(Top10)</h4><canvas id="chart-store-count"></canvas></div>
+    <div class="chart-box"><h4>鍚勯棬搴楁墸娆鹃噾棰?(Top10)</h4><canvas id="chart-store-deduct"></canvas></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box"><h4>瀹㈣瘔鍟嗗搧鎵ｅ噺閲嶉噺 (Top10)</h4><canvas id="chart-product-weight"></canvas></div>
+    <div class="chart-box"><h4>瀹㈣瘔鍟嗗搧鎵ｅ噺閲戦 (Top10)</h4><canvas id="chart-product-deduct"></canvas></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>闂ㄥ簵瀹㈣瘔鏄庣粏琛?/h3>
+    <div id="analysis-table"></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>鍟嗗搧瀹㈣瘔鏄庣粏琛?/h3>
+    <div id="analysis-product-table"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============ 鏁版嵁灞?============
+var tickets = [];
+var TYPES = ['缂烘枻灏戜袱','璐у搧鎹熷潖','鍝佽川闂','鍙戦敊璐у搧','閰嶉€佸欢璇?,'灏戝彂璐у搧','閫€娆鹃€€璐?,'鍏朵粬'];
+var DEMANDS = ['閫€璐ч€€娆?,'鎹㈣揣','琛ュ彂','浠呴€€娆?,'閬撴瓑瑙ｉ噴','鍏朵粬'];
+var AGENTS = ['鎯?,'钄?,'濠?,'鏋?,'绮?,'鍏朵粬瀹㈡湇'];
+
+// ============ 闂ㄥ簵 & 鍟嗗搧鏁版嵁 ============
+var STORES = ["椋熼噹鍙屽垱鍥簵","鐩搁亣闀囨睙瑗挎触娓″簵","鐩搁亣闀囨睙鑻忓畞骞垮満搴?,"涓存椂锛堥偅鏃讹級","鑰佺煶褰撳閲戦櫟澶╁湴搴?,"閬囪灏忛潰鍗庤寕涓績搴?,"榛斿ず澶烘€讳粨","澶х背鍏堢敓姹熻嫃鍗椾含閲戦拱婀栨花澶╁湴搴?,"鍗婂ぉ濡栭紦妤煎惥鎮﹀箍鍦?,"鍗婂ぉ濡栧叚鍚堟涔愭腐搴?,"鍗婂ぉ濡栧缓閭洪噾鍦板箍鍦哄簵","鍗婂ぉ濡栦粰鏋椾竾杈捐寕搴?,"鍗婂ぉ濡栨睙鍖楅噾璞″煄搴?,"鍗婂ぉ濡栬锤涓氬ぉ鍦板簵","鍗婂ぉ濡栨睙瀹侀緳婀栧ぉ琛楀簵","鍗婂ぉ濡栦笢鍗楅偦閲屽簵","鍗婂ぉ濡栭洦灞遍緳婀栧簵","鍗婂ぉ濡栨枃榧庡箍鍦哄簵","鍗婂ぉ濡栨睙瀹佸崡鏂规椂浠ｅ簵","鍗婂ぉ濡栨墭涔愬槈骞垮満搴?,"鍗婂ぉ濡栦竾璋锋収搴?,"鍗婂ぉ濡栨渤瑗夸竾杈惧簵A","鍗婂ぉ濡栨柊琛楀彛IFCX搴?,"鍗婂ぉ濡栭洦鑺辩传鑽嗗箍鍦哄簵","鍗婂ぉ濡栨郸鍙ｅ紭闃冲箍鍦哄簵","鍗婂ぉ濡栨睙鍖楅緳婀栧簵","鍗婂ぉ濡栦節闇勬ⅵ澶╁湴","鍗婂ぉ濡栧疂榫欏箍鍦哄簵","鍗婂ぉ濡栨箹閲戜節姹囧簵","鍗婂ぉ濡栨墭涔愬槈搴?,"鍗婂ぉ濡栨睙瀹佷竾灏氬煄搴?,"鍗婂ぉ濡栫Е娣ぇ娲嬬櫨璐у簵","鍗婂ぉ濡栨睙瀹佷箟涔屽簵","澶х背鍏堢敓姹熻嫃鍗椾含缁垮湴涔嬬獥搴?,"闆跺敭","鏄庤緣锛堝鏍★級","鎺㈤奔鍗椾含娴﹀彛闆ㄥ北榫欐箹搴?,"澶х背鍏堢敓姹熻嫃鍗椾含鍚屾洣涓囧皻鍩庡簵","閬囪灏忛潰鐜勬鑺卞洯鍩庡簵","閬囪灏忛潰榧撴ゼ鍚炬偊搴?,"椋熷爞","鏄屼赴鐮存氮寮橀槼骞垮満搴?,"澶х背鍏堢敓鍗椾含涓ぎ鍩庡競濂ヨ幈搴?,"澶х背鍏堢敓姹熻嫃鍗椾含绱嘲骞垮満搴?,"椋為┏寰愬簞搴?,"椋為┏瀹夋€€鏉戝簵","椋為┏涓婂厓搴?,"澶х背鍏堢敓鍗椾含涓ぎ鍟嗗満搴?,"澶х背鍏堢敓姹熻嫃绉︽樊鐧戒笅璺簵","澶х背鍏堢敓鍗椾含寤洪偤涓囪揪搴?,"澶х背鍏堢敓姹熻嫃鍗椾含鏂板煄甯傚箍鍦哄簵","澶у彂鏅灚涓績搴?,"澶у彂寰峰熀骞垮満搴?,"閿呴椋樺皻鎮﹀ぉ鍦板簵","瑗胯礉鍗椾含娌宠タ閲戦拱搴?,"瑗胯礉鍗椾含鍗庨噰澶╁湴搴?,"瑗胯礉鍗椾含缂ゆ鼎姹囧簵","椹姘镐俊娉颁腑蹇冨皻鎮﹀ぉ鍦板簵","閬囪灏忛潰娌宠タ榫欐箹搴?,"閬囪灏忛潰瀹滄偊鍩庡簵","姣涜倸寮犻噸搴嗙伀閿咃紙浠欐灄閲戦拱搴楋級","閬囪灏忛潰寤洪偤鍚炬偊搴?,"閬囪灏忛潰铏规偊鍩庡簵","閬囪灏忛潰鏂拌鍙ｉ噾楣板簵","绫充粨涓囪薄澶╁湴搴?,"鏉ㄦ湁鍠滃崡浜粰鏋楅噾楣板簵","鏉ㄦ湁鍠滃崡浜睙瀹侀噾楣板簵","鐩搁亣闀囨睙娑﹀窞涓囪揪","榛斿ず澶烘睙瀹佺爞涔嬭埞搴?,"涓夊嚭灞变竾璞″ぉ鍦板簵","涓夊嚭灞辨睙鍖楄櫣鎮﹀煄搴?,"澶栧﹩瀹跺崡浜柊鐧惧簵","澶栧﹩閫佸埌瀹跺崡浜懌涔愮敓娲诲箍鍦哄簵","澶栧﹩閫佸埌瀹跺崡浜┈鍙拌搴?,"澶栧﹩閫佸埌瀹跺崡浜ぇ鐟炵敓娲诲箍鍦哄簵","瑗胯礉鍗椾含姹熷畞鐮備箣鑸瑰簵","鑰佸鑸呭崡浜崡绔欎笁搴?,"椋熼噹鐧惧婀栧簵","杈ｄ笉鎬傚紭闃冲箍鍦哄簵","杈ｄ笉鎬傚缓閭轰竾杈惧簵","杈ｄ笉鎬傞┈缇よ姳鍥煄搴?,"杈ｄ笉鎬傞洦灞遍緳婀栧簵","鐙愮嫺鐖变笂妞板瓙楦★紙鍗椾含榫欐咕澶╄搴楋級","鍊嶄箰鍗椾含涓囪薄澶╁湴搴?,"閭ｆ椂鏂扮枂路閮芥姢搴?,"娣诲ソ杩愪竾璞″煄搴?,"澶簩鍗椾含娌宠タ榫欐箹绌洪棿绔欏鍗栧簵","澶簩鍗椾含娌宠タ榫欐箹搴?,"鏂板お浜屽崡浜缓閭哄惥鎮﹀簵","澶簩娉板窞涓囪薄鍩庡簵","澶簩鍗椾含閲戣寕姹囧簵","鏂板お浜屽崡浜櫣鎮﹀煄鍒嗗簵","鑺辩洏瀛愬煄鍖椾竾璞″簵","鑺辩洏瀛愭睙鍖楄櫣鎮﹀煄搴?,"椹姘搁緳灞辫矾鍗忛懌绉戞妧澶у帵搴?,"椹姘歌姕婀栦腑灞卞寳璺叓浣颁即搴?,"椹姘告壃宸炰含鍗庡煄搴?,"椹姘告壃宸炲惥鎮﹀箍鍦哄簵","椹姘哥Е娣矾澶ф鼎鍙戝簵","椹姘哥巹姝︽嫑鍟嗚姳鍥煄搴?,"椹姘镐粰鏋椾竾杈捐寕搴?,"椹姘搁噾鑼傝绉€鍩庡簵","椹姘镐竾璞″ぉ鍦板簵","椹姘搁晣姹熷叓浣颁即搴?,"椹姘搁噾璞″煄璐墿涓績搴?,"椹姘搁噾灏ц矾閲戝湴骞垮満搴?,"椹姘搁┈缇よ姳鍥煄搴?,"椹姘告ˉ鍖楀紭闃冲簵","椹姘告睙鍗楄櫣鎮﹀煄搴?,"椹姘告柊鐧惧簵","椹姘稿崕鏂拌矾涓囪薄姹囧簵","椹姘镐簯榫欏北璺渤瑗垮ぉ琛楀簵","椹姘稿嚖鐔欒矾鐜畤鍩庡簵","椹姘稿ぇ瑙傚ぉ鍦板簵","椹姘告睙鍖楄櫣鎮﹀煄","椹姘搁晣姹熸鼎宸炰竾杈惧簵","椹姘哥В鍛ㄤ笢璺爞涔嬭埞搴?,"椹姘稿畨寰烽棬瀹滄偊鍩庡簵","椹姘稿厜鏄庤矾闆ㄥ北榫欐箹澶╄搴?,"椹姘告睙瀹佷竾杈惧簵","椹姘稿弻榫欏ぇ閬撴櫙鏋簵","椹姘稿煄鍗楁渤璺爞涔嬭埞搴?,"椹姘稿煄鍖椾竾璞℃眹","榛斿ず澶虹帇搴滃ぇ琛楀簵","榛斿ず澶洪噾闄靛ぉ鍦板簵","鏂囬€氬啺瀹ゆ柊鐧惧簵","榛斿ず澶洪洦鑺卞鍘呭簵","榛斿ず澶哄ぇ铻嶅煄搴?,"榛斿ず澶烘睙鍖楄櫣鎮﹀煄搴?,"榛斿ず澶烘櫙鏋簵","閿呴椋樻睙瀹佺爞涔嬭埞搴?,"W鍗椾含姹熷畞鐮備箣鑸?,"W鍗椾含姹熷寳鐮備箣鑸?,"鏈涜搲鍩庡崕褰╁ぉ鍦板簵","閿呴椋橀噾闄靛ぉ鍦板簵","閿呴椋橀洦鑺卞鍘呭簵","閿呴椋樻睙鍖楄櫣鎮﹀煄搴?,"闆舵煉鍙佸购鑹惧皻搴?,"闆舵煉鍙佸购姹熷畞鐮備箣鑸瑰簵","闆舵煉鍙佸购闆ㄨ姳瀹㈠巺搴?,"闆舵煉鍙佸购澶ц瀺鍩庡簵","灏忔弧鏅灚搴?,"闃垮厓鏉ヤ簡涓囪薄澶╁湴搴?,"闃垮厓鏉ヤ簡鏅灚搴?,"灏忔弧鏂扮櫨搴?,"鏉ㄦ湁鍠滃崡浜柊鍩庡競搴?,"鏉ㄦ湁鍠滃崡浜崕閲囧煄搴?,"宸℃箻璁板崡浜巹姝﹀簵","宸℃箻璁板崡浜噾闄典腑鐜簵","宸℃箻璁板崡浜洦鑺变竾璞″ぉ鍦板簵","娲绘臣鍏堢敓瀵屾槬姹熶笢琛楀簵","娲绘臣鍏堢敓鑰侀棬涓滃簵","娲绘臣鍏堢敓浜戦敠璺簵","椹姘稿崡浜竾璞″ぉ鍦板簵A","椹姘稿崡浜柊鐧惧簵A","娴峰簳鎹炲崡浜柊鐧惧簵","娴峰簳鎹炲崡浜睙瀹佷竾杈惧簵","娴峰簳鎹炲崡浜粰鏋椾竾杈捐寕搴?,"澶ф笣鐏攨鍗椾含鏂拌鍙ｅ簵","澶ф笣鐏攨鍗椾含姹熷畞搴?,"澶ф笣鐏攨鍗椾含浠欐灄搴?,"楸奸叿鍗椾含鏂拌鍙ｅ簵","楸奸叿鍗椾含姹熷畞搴?,"楸奸叿鍗椾含浠欐灄搴?,"瑗胯礉鑾滈潰鏉戝崡浜柊琛楀彛搴?,"瑗胯礉鑾滈潰鏉戝崡浜睙瀹佸簵","瑗胯礉鑾滈潰鏉戝崡浜粰鏋楀簵","浜戞捣鑲村崡浜柊琛楀彛搴?,"浜戞捣鑲村崡浜睙瀹佸簵","浜戞捣鑲村崡浜粰鏋楀簵"];
+var PRODUCTS = ["鐗涗笂鑴?,"鍘ㄩ偊缇庡懗椴滈叡娌?L","鐗涗笂鑴戞搏","铻轰笣鑲?,"楦℃补2.5kg","G瀹佸鏋告潪","G姒ㄨ彍鐤欑槱","鍙堕粍绱犺櫕鑽夎泲","鍓嶆浜旀寚姣涙","缇婃潅","G骞茶荆妞掍笣50g","锛堝喕锛夋竻鐐掗浮涓?.5kg","閲庣敓闊彍鑺遍叡200g","G榫欓棬绫抽唻","G绱灄闄堥唻","锛堝喕锛夊喕灏忛奔灏忚櫨150g鍗婃垚鍝?,"锛堝喕锛夊喎鍐诲ぇ鐧介奔650g鍗婄墖鐧芥潯","锛堝喕锛夐粍閲戝皬鍦熻眴1kg","G浠熷懗閲戞堡2鍙峰崐鍥烘€佽皟鍛虫枡1kg","G鐙悆鐗屽悏澹矇300g","G鑼嫇","灞辨鐗?,"锛堟按鏋滐級浣冲啘榛戦捇鍑ゆⅷ","锛堟按鏋滐級榛勯噾鐧鹃鏋?,"鑺﹁媷鍚哥","90*110濂楁琚嬪瓙","G鐜夌背娓?,"鐧芥磱钁?,"榛勮荆涓?椴滄椿-200g卤10g/鏉?","璋冪悊鐗涜倝绮?楸奸叿","鏃犳姉楦¤泲","涔濆埗璇濇","36鎵撳瓟","48鎵撳瓟","C鑷共","G鍛冲ソ缇庣櫧鑳℃绮?10g","褰╄壊鑳跺甫","涓佺偣鍎块杈ｅ皬榫欒櫨璋冨懗閰?kg","涓嶉攬閽㈢瀛?,"G浜斿父澶х背10kg","F鐚垖锛堝幓鏍癸級","F鐚€虫湹锛堢儳姣涳級","锛堝喕锛夊濠嗚彍250鍏?鍖?,"椴滆櫕鑽夎姳锛堢壒绾э級","G鎸傞潰锛?00g/鎶婏級","锛堝喕锛夎眴娌欏寘瀛?,"G浼橀吀涔?,"瀹朵箰閲戦吀姹ら叡960g锛堢綈瑁咃級","F鍓嶈吙鑲夊潡","娓呯編鍖呰澶ф补璞嗚厫1kg","锛堢壒锛夌传鑻忓彾锛堜腑鍙凤級","锛堟按鏋滐級钁¤悇","涓夎壊鍫囷紙7鍏?鐩掞級","鐜懓鑺辩摚锛?7鍏?鐩掞級","锛堢壒锛夐吀妯″彾12g/鐩?,"锛堢壒锛夎儭妞掓湪鍙讹紙12鍏?鐩掞級","F鐚帓","锛堝喕锛夊畨浜曠伀灞辩煶鐑よ偁3.5kg/鍖?,"鐧介并楸?娲绘潃/鍑€鑶涳級","杩疯凯棣欙紙绂佺敤锛?,"F鐚","锛堟按鏋滐級绾㈠績鏌氬瓙","锛堟按鏋滐級闈掕姃鏋?,"鐜嬩腑鐜嬪啲鏋?,"F鍘荤毊浜旇姳鑲夌墖","灏忛潚浠?,"锛堟按鏋滐級鍥涘窛鏌犳","娓呮睙楸硷紙娲荤殑1.8-2.3锛?,"F鍘荤毊涓夊眰浜旇姳鑲?,"淇濋矞琚嬶紙澶э級","淇濋矞琚嬶紙灏忥級","鍙ｈ槕4cm","娌圭偢鎵嬪垏鑲夌毊","涓€娆℃€ф墜濂椾竵鏅碨鐮?,"锛堝喕锛夌尓姊呰姳鑲夛紙妞板瓙楦★級","椴堥奔锛堝噣鑶涳級","娌欒櫨50-55澶?,"鍗″＋浼橀叿涔?,"锛堟按鏋滐級铚滄","璋冩枡鍖匘锛堟ぐ瀛愰浮锛?,"鐗涜洐鑲?,"鎹為奔缃?,"F鐚倶锛堝墎锛?,"鐗涜洐锛堝噣鑶涳級","G钀濆崪骞诧紙浠讹級","绾辩嚎鎵嬪","閲戞棪鐜夌背榛勯浮铔?,"鐧介并楸硷紙鍑€鑶涳級","F鐚箘鑶€锛堝墎锛?,"锛堟按鏋滐級娴锋鏋?,"鎵撳寘鐩?,"锛堝喕锛夐吀鑿滃寘瀛?,"閫忔槑灏忓嫼瀛?,"锛堟按鏋滐級鏌垮瓙","锛堟按鏋滐級榛勬煔","淇濋矞鑶?5cm锛堟ぐ瀛愰浮锛?,"锛堝喕锛夋补璞嗚20鏂?绠?,"钘ゆ鑴嗙毊楦★紙妞板瓙楦★級","绯背鑲夎偁锛堟ぐ瀛愰浮锛?,"G楹昏荆杈ｆ闈紙妞板瓙楦★級","鐧借壊鍙ｇ僵","濮滅偝鐡?,"缁挎瘺鐞?,"娲楁磥绮撅紙妗讹級","涓濈摐灏栵紙瑗胯礉锛?,"F鐚剳鑺?,"鏉鹃拡","鏂戞枔鍙?,"鑽夐奔锛堝噣锛?,"锛堟按鏋滐級鑴愭","鐗涜兏楠?,"C鎵嬫挄闈㈢瓔","鏈夋満鑿滃績250g锛堣タ璐濓級","鏈夋満涓婃捣闈掕嫍250g锛堣タ璐濓級","F鍚庤吙绮捐倝鐗?-8","鑽夐奔锛堝垏鐗囷級","鐗涚瓛楠?,"鐗涜倠鏉?,"浜旈钀濆崪骞?,"F榛戞瘺鐚簲鑺辫倝","灏忓嫼瀛?,"澶у嫼瀛?,"椋熷搧鎵撳寘琚?锛堜腑鍙凤級","F绮句簲鑺辫倝锛堝垏鍧楋級","C瀹跺父璞嗚厫","鐨墜濂桵鐮?,"鏈夋満鑳¤悵鍗?kg锛堣タ璐濓級","鏄傚埡楸硷紙绾?鏉?鏂わ級","F鐚噷鑴婅倝锛堝幓鑶滀慨杈癸級","C鍘氶叡骞?,"娲箹钘?甯︽偿鐨?","钀濆崪骞?,"F绮句簲鑺辫倝锛堜慨杈癸級","F鐚叞鐗?*0.5*0.3","F鐚楠?-5CM","F鍚庤吙鐦﹁倝","F鐚緳楠紙鏁翠笉鐮嶏級","G閰歌眴瑙掞紙浠讹級","锛堟按鏋滐級妗斿瓙","娈嬭煿","榛戦奔锛堝噣锛?,"F榛戠尓姊呰姳鑲?,"F鐚ぇ鎺?,"閲戠帀婊″爞钀濆崪骞诧紙浠讹級","鎵嬪","5鍙风數姹?,"榛戣壊缃戝附","鍒峰瓙","B浠旈浮鍧?,"缇婅吙鑲夛紙鍘荤毊鍘婚锛?,"F姊呰姳鑲夛紙鍒?.5-1cm涓侊級","锛堝喕锛夎煿鏌?00鍏?鍖?,"缃楁皬铏撅紙15澶达級","F鐚倽7*0.5*0.3","F绮惧搧浜旇姳鑲夛紙淇竟锛?,"鎵嬫挄闈㈢瓔","锛堝喕锛夌墰鏉?,"榛戣壊鍨冨溇琚?10*120","鍘ㄦ埧绾?,"F鐚倽鐗?*0.5*0.3","杩熻彍鑻旓紙瑗胯礉锛?,"鍗＄鐐?,"娲楄。绮?,"鎵妸","鑽夐奔锛堝噣鑶涘悗鎵撶墖锛?,"F鐚倽鐗?*8*0.3","F鐚偤锛堟枻锛?,"鐑共闈?,"F浜旇姳鑲夌墖3*3","F姊呰姳鑲夌墖4*4","F姊呰姳鑲夌墖2*3","F姊呰姳鑲変笣0.6*8","F浜旇姳鑲夌墖锛堥暱4-5锛屽3-4锛屽帤0.2锛?,"F鐚噷鑴婅倝锛堝垏鐗囷級","F鐚倽鐗?,"鍖欐焺","F鐚悗鑵胯倝娌?,"骞插喕姣涜倸","杈ｆ绮?,"铏句粊","椴滆礉","锜硅倝妫?,"閲戦拡鑿?,"棣欒弴","骞宠弴","鏈ㄨ€?,"閾惰€?,"绾㈡灒","鏋告潪","妗傚渾","鑾插瓙","鐧惧悎","閾舵潖浠?,"鏍告浠?,"鑵版灉","鑺辩敓","绾㈣眴","缁胯眴","榛戣眴","榛勮眴","钖忕背","灏忕背","榛戠背","绯背","鐕曢害","鑽為害","鐜夌背纰?,"闈㈢矇","娣€绮?,"鐢熺矇","閰垫瘝","娉℃墦绮?,"鑻忔墦绮?,"鐧界硸","绾㈢硸","鍐扮硸","铚傝湝","鐩?,"鍛崇簿","楦＄簿","鐢熸娊","鑰佹娊","铓濇补","鏂欓厭","鐧介唻","闄堥唻","棣欓唻","鑺濋夯娌?,"鑺辨娌?,"杈ｆ娌?,"璞嗙摚閰?,"鐢滈潰閰?,"鐣寗閰?,"娌欐媺閰?,"鑺辩敓閰?,"鑺濋夯閰?,"鑵愪钩","璞嗚眽","姒ㄨ彍","閰歌彍","娉¤彍","闆噷绾?,"姊呭共鑿?];
+
+// ============ Toast ============
+var toastTimer;
+function showToast(msg, type){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (type||'') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+// ============ API 璋冪敤 ============
+async function apiGet(url){
+  var resp = await fetch(url);
+  var json = await resp.json();
+  if(!json.success) throw new Error(json.error || '璇锋眰澶辫触');
+  return json;
+}
+
+async function apiPost(url, data){
+  var resp = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  var json = await resp.json();
+  if(!json.success) throw new Error(json.error || '璇锋眰澶辫触');
+  return json;
+}
+
+async function apiPut(url, data){
+  var resp = await fetch(url, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  var json = await resp.json();
+  if(!json.success) throw new Error(json.error || '璇锋眰澶辫触');
+  return json;
+}
+
+async function apiDelete(url){
+  var resp = await fetch(url, { method: 'DELETE' });
+  var json = await resp.json();
+  if(!json.success) throw new Error(json.error || '璇锋眰澶辫触');
+  return json;
+}
+
+// ============ 鏁版嵁璇诲啓锛堜簯绔級============
+async function loadTickets(){
+  try {
+    var result = await apiGet('/api/tickets');
+    tickets = result.data || [];
+    document.getElementById('ticket-count-badge').textContent = tickets.length + ' 鏉″伐鍗?;
+    document.getElementById('sync-dot').textContent = '鈼?鍦ㄧ嚎';
+    document.getElementById('sync-dot').classList.remove('syncing');
+  } catch(e){
+    console.error('鍔犺浇鏁版嵁澶辫触:', e);
+    document.getElementById('sync-dot').textContent = '鈼?绂荤嚎';
+    showToast('杩炴帴鏈嶅姟鍣ㄥけ璐ワ紝璇锋鏌ョ綉缁?, 'error');
+  }
+}
+
+async function refreshAll(){
+  document.getElementById('sync-dot').classList.add('syncing');
+  await loadTickets();
+  var activeTab = document.querySelector('.page.active');
+  if(activeTab){
+    if(activeTab.id === 'page-entry') renderEntry();
+    if(activeTab.id === 'page-list') renderList();
+    if(activeTab.id === 'page-analysis') renderAnalysis();
+  }
+  showToast('鏁版嵁宸插埛鏂?, 'success');
+}
+
+// ============ 绉嶅瓙鏁版嵁 ============
+async function seed(){
+  if(tickets.length > 0) return;
+  try {
+    var result = await apiPost('/api/seed', { stores: STORES, products: PRODUCTS });
+    if(result.seeded){
+      await loadTickets();
+      showToast('宸茬敓鎴?' + result.count + ' 鏉℃紨绀烘暟鎹?, 'success');
+    }
+  } catch(e){
+    // 宸叉湁鏁版嵁鏃跺悗绔繑鍥為敊璇紝蹇界暐
+  }
+}
+
+// ============ 鍒濆鍖栧€欓€夊垪琛?============
+(function(){
+  var sl = document.getElementById('store-list');
+  STORES.forEach(function(s){ sl.innerHTML += '<option value="'+s+'">'; });
+  var pl = document.getElementById('product-list');
+  PRODUCTS.forEach(function(p){ pl.innerHTML += '<option value="'+p+'">'; });
+})();
+
+// ============ 鏍囩椤靛垏鎹?============
+function switchTab(t){
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(function(b){
+    if(b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'"+t+"'") !== -1) b.classList.add('active');
+  });
+  var page = document.getElementById('page-'+t);
+  if(page) page.classList.add('active');
+  if(t === 'entry') renderEntry();
+  if(t === 'list') renderList();
+  if(t === 'analysis') setTimeout(renderAnalysis, 100);
+}
+
+// ============ 宸ュ崟褰曞叆 ============
+function renderEntry(){
+  var today = new Date().toISOString().slice(0, 10);
+  document.getElementById('f-date').value = today;
+  var todayTickets = tickets.filter(function(t){ return t.date === today; });
+  var monthPrefix = today.slice(0, 7);
+  var monthTickets = tickets.filter(function(t){ return t.date.indexOf(monthPrefix) === 0; });
+  document.getElementById('m-today').textContent = todayTickets.length;
+  document.getElementById('m-deduct').textContent = '\u00a5' + todayTickets.reduce(function(s, t){ return s + (t.deduct || 0); }, 0).toLocaleString();
+  var solved = todayTickets.filter(function(t){ return t.status === '宸茶В鍐?; }).length;
+  document.getElementById('m-solved').textContent = todayTickets.length ? Math.round(solved / todayTickets.length * 100) + '%' : '0%';
+  document.getElementById('m-total').textContent = monthTickets.length;
+  populateFilters();
+}
+
+async function submitTicket(){
+  var d = document.getElementById('f-date').value;
+  var tm = document.getElementById('f-time').value;
+  var store = document.getElementById('f-store').value.trim();
+  var product = document.getElementById('f-product').value.trim();
+  if(!d || !tm){ showToast('璇峰～鍐欐棩鏈熷拰鏃堕棿', 'error'); return; }
+  if(!store){ showToast('璇峰～鍐欏璇夐棬搴?, 'error'); return; }
+  if(!product){ showToast('璇峰～鍐欏璇夊晢鍝?, 'error'); return; }
+
+  try {
+    await apiPost('/api/tickets', {
+      date: d,
+      time: tm,
+      store: store,
+      product: product,
+      weight: parseFloat(document.getElementById('f-weight').value) || 0,
+      type: document.getElementById('f-type').value,
+      deduct: parseFloat(document.getElementById('f-deduct').value) || 0,
+      status: document.getElementById('f-status').value,
+      demand: document.getElementById('f-demand').value,
+      extraCost: parseFloat(document.getElementById('f-extra').value) || 0,
+      note: document.getElementById('f-note').value,
+      agent: document.getElementById('f-agent').value
+    });
+    await loadTickets();
+    showToast('宸ュ崟鎻愪氦鎴愬姛锛?, 'success');
+    document.getElementById('f-store').value = '';
+    document.getElementById('f-product').value = '';
+    document.getElementById('f-weight').value = '';
+    document.getElementById('f-deduct').value = '';
+    document.getElementById('f-extra').value = '0';
+    document.getElementById('f-note').value = '';
+    renderEntry();
+  } catch(e){
+    showToast('鎻愪氦澶辫触: ' + e.message, 'error');
+  }
+}
+
+function populateFilters(){
+  var fStore = document.getElementById('filter-store');
+  fStore.innerHTML = '<option value="">鍏ㄩ儴闂ㄥ簵</option>';
+  var stores = [];
+  tickets.forEach(function(t){ if(stores.indexOf(t.store) === -1) stores.push(t.store); });
+  stores.sort(function(a, b){ return a.localeCompare(b, 'zh'); });
+  stores.forEach(function(s){ fStore.innerHTML += '<option>'+s+'</option>'; });
+  var fType = document.getElementById('filter-type');
+  fType.innerHTML = '<option value="">鍏ㄩ儴绫诲瀷</option>';
+  TYPES.forEach(function(t){ fType.innerHTML += '<option>'+t+'</option>'; });
+}
+
+// ============ 瀹㈣瘔鏄庣粏 ============
+function renderList(){
+  var list = [].concat(tickets).reverse();
+  var dateStart = document.getElementById('filter-date-start').value;
+  var dateEnd = document.getElementById('filter-date-end').value;
+  if(dateStart) list = list.filter(function(t){ return t.date >= dateStart; });
+  if(dateEnd) list = list.filter(function(t){ return t.date <= dateEnd; });
+  var fs = document.getElementById('filter-store').value;
+  var ft = document.getElementById('filter-type').value;
+  var fst = document.getElementById('filter-status').value;
+  var fp = document.getElementById('filter-product').value.trim();
+  if(fs) list = list.filter(function(t){ return t.store === fs; });
+  if(ft) list = list.filter(function(t){ return t.type === ft; });
+  if(fst) list = list.filter(function(t){ return t.status === fst; });
+  if(fp) list = list.filter(function(t){ return (t.product || '').indexOf(fp) !== -1; });
+
+  var html = '<table><tr><th>宸ュ崟鍙?/th><th>鏃ユ湡</th><th>鏃堕棿</th><th>闂ㄥ簵</th><th>鍟嗗搧</th><th>閲嶉噺</th><th>闂绫诲瀷</th><th>鎵ｆ</th><th>琛ヨ揣璐?/th><th>瀹㈡埛闇€姹?/th><th>瀹㈡湇</th><th>鐘舵€?/th><th>鎿嶄綔</th></tr>';
+  list.forEach(function(t){
+    var sclass = t.status === '宸茶В鍐? ? 'done' : t.status === '寰呰窡杩? ? 'pending' : 'follow';
+    html += '<tr>';
+    html += '<td>'+t.id+'</td><td>'+t.date+'</td><td>'+t.time+'</td>';
+    html += '<td><strong>'+t.store+'</strong></td><td>'+(t.product||'')+'</td>';
+    html += '<td>'+(t.weight||'0')+'鏂?/td><td>'+t.type+'</td>';
+    html += '<td class="money">\u00a5'+(t.deduct||0)+'</td>';
+    html += '<td class="money">'+(t.extraCost > 0 ? '\u00a5'+t.extraCost : '\u2014')+'</td>';
+    html += '<td>'+(t.demand||'')+'</td>';
+    html += '<td>'+(t.agent||'')+'</td>';
+    html += '<td><span class="tag tag-'+sclass+'">'+t.status+'</span></td>';
+    html += '<td><button class="btn btn-outline" style="padding:3px 10px;font-size:12px;margin-right:4px" onclick="editTicket(\''+t.id+'\')">缂栬緫</button><button class="btn btn-danger" style="padding:3px 10px;font-size:12px" onclick="delTicket(\''+t.id+'\')">鍒犻櫎</button></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  if(list.length === 0) html = '<div class="empty-state"><div class="icon">馃搵</div><p>鏆傛棤鍖归厤鐨勫璇夋暟鎹?/p></div>';
+  document.getElementById('ticket-table').innerHTML = html;
+}
+
+async function delTicket(id){
+  if(!confirm('纭鍒犻櫎宸ュ崟 ' + id + ' 锛?)) return;
+  try {
+    await apiDelete('/api/tickets/' + encodeURIComponent(id));
+    await loadTickets();
+    renderList();
+    showToast('宸插垹闄?, 'success');
+  } catch(e){
+    showToast('鍒犻櫎澶辫触: ' + e.message, 'error');
+  }
+}
+
+function editTicket(id){
+  var ticket = tickets.find(function(t){ return t.id === id; });
+  if(!ticket){ showToast('宸ュ崟涓嶅瓨鍦?, 'error'); return; }
+  document.getElementById('edit-idx').value = id;
+  document.getElementById('edit-ticket-id').textContent = '锛堝伐鍗曞彿锛? + id + '锛?;
+  document.getElementById('edit-date').value = ticket.date;
+  document.getElementById('edit-time').value = ticket.time;
+  document.getElementById('edit-store').value = ticket.store;
+  document.getElementById('edit-product').value = ticket.product || '';
+  document.getElementById('edit-weight').value = ticket.weight || 0;
+  document.getElementById('edit-type').value = ticket.type;
+  document.getElementById('edit-deduct').value = ticket.deduct || 0;
+  document.getElementById('edit-status').value = ticket.status;
+  document.getElementById('edit-demand').value = ticket.demand || '';
+  document.getElementById('edit-extra').value = ticket.extraCost || 0;
+  document.getElementById('edit-note').value = ticket.note || '';
+  document.getElementById('edit-agent').value = ticket.agent || '';
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('edit-modal').classList.remove('show');
+}
+
+async function saveEdit(){
+  var id = document.getElementById('edit-idx').value;
+  var d = document.getElementById('edit-date').value;
+  var tm = document.getElementById('edit-time').value;
+  var store = document.getElementById('edit-store').value.trim();
+  var product = document.getElementById('edit-product').value.trim();
+  if(!d || !tm){ showToast('璇峰～鍐欐棩鏈熷拰鏃堕棿', 'error'); return; }
+  if(!store){ showToast('璇峰～鍐欏璇夐棬搴?, 'error'); return; }
+  if(!product){ showToast('璇峰～鍐欏璇夊晢鍝?, 'error'); return; }
+
+  try {
+    await apiPut('/api/tickets/' + encodeURIComponent(id), {
+      date: d,
+      time: tm,
+      store: store,
+      product: product,
+      weight: parseFloat(document.getElementById('edit-weight').value) || 0,
+      type: document.getElementById('edit-type').value,
+      deduct: parseFloat(document.getElementById('edit-deduct').value) || 0,
+      status: document.getElementById('edit-status').value,
+      demand: document.getElementById('edit-demand').value,
+      extraCost: parseFloat(document.getElementById('edit-extra').value) || 0,
+      note: document.getElementById('edit-note').value,
+      agent: document.getElementById('edit-agent').value
+    });
+    await loadTickets();
+    closeEditModal();
+    renderList();
+    renderEntry();
+    showToast('宸ュ崟 ' + id + ' 宸叉洿鏂?, 'success');
+  } catch(e){
+    showToast('缂栬緫澶辫触: ' + e.message, 'error');
+  }
+}
+
+function exportCSV(){
+  var csv = '\uFEFF宸ュ崟鍙?鏃ユ湡,鏃堕棿,闂ㄥ簵,鍟嗗搧,閲嶉噺(鏂?,闂绫诲瀷,鎵ｆ閲戦,琛ヨ揣璐圭敤,瀹㈡埛闇€姹?澶勭悊瀹㈡湇,鐘舵€?澶囨敞\n';
+  tickets.forEach(function(t){
+    csv += [t.id, t.date, t.time, t.store, t.product||'', t.weight||0, t.type, t.deduct||0, t.extraCost||0, t.demand||'', t.agent||'', t.status, t.note||''].join(',') + '\n';
+  });
+  downloadFile(csv, '瀹㈣瘔宸ュ崟_' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv;charset=utf-8');
+}
+
+function importCSV(){
+  document.getElementById('csv-file-input').click();
+}
+
+async function handleCSVImport(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try {
+      var lines = e.target.result.split('\n');
+      if(lines.length < 2){ showToast('CSV鏍煎紡涓嶆纭?, 'error'); return; }
+      var imported = 0;
+      var errors = 0;
+      for(var i = 1; i < lines.length; i++){
+        var cols = lines[i].split(',');
+        if(cols.length < 6) continue;
+        var existingId = (cols[0]||'').trim();
+        var exists = tickets.find(function(t){ return t.id === existingId; });
+        if(exists) continue;
+        try {
+          await apiPost('/api/tickets', {
+            date: (cols[1]||'').trim(),
+            time: (cols[2]||'').trim() || '08:00',
+            store: (cols[3]||'').trim(),
+            product: (cols[4]||'').trim(),
+            weight: parseFloat(cols[5]) || 0,
+            type: (cols[6]||'').trim() || '鍏朵粬',
+            deduct: parseFloat(cols[7]) || 0,
+            extraCost: parseFloat(cols[8]) || 0,
+            demand: (cols[9]||'').trim() || '',
+            agent: (cols[10]||'').trim() || '',
+            status: (cols[11]||'').trim() || '寰呰窡杩?,
+            note: (cols[12]||'').trim() || ''
+          });
+          imported++;
+        } catch(err){
+          errors++;
+        }
+      }
+      await loadTickets();
+      showToast('鎴愬姛瀵煎叆 ' + imported + ' 鏉″伐鍗? + (errors > 0 ? '锛? + errors + ' 鏉″け璐? : ''), errors > 0 ? 'error' : 'success');
+      renderEntry();
+      renderList();
+    } catch(err){
+      showToast('瀵煎叆澶辫触: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+function downloadFile(content, filename, mime){
+  var blob = new Blob([content], { type: mime });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ============ 闂鍒嗘瀽 ============
+var chartTypeI, chartStoreC, chartStoreD, chartTrendI, chartProdW, chartProdD;
+
+function renderAnalysis(){
+  var dateStart = document.getElementById('analysis-date-start').value;
+  var dateEnd = document.getElementById('analysis-date-end').value;
+  var mt = tickets;
+  if(dateStart) mt = mt.filter(function(t){ return t.date >= dateStart; });
+  if(dateEnd) mt = mt.filter(function(t){ return t.date <= dateEnd; });
+
+  var totalDeduct = mt.reduce(function(s, t){ return s + (t.deduct || 0); }, 0);
+  var totalExtra = mt.reduce(function(s, t){ return s + (t.extraCost || 0); }, 0);
+  var storeSet = {};
+  mt.forEach(function(t){ storeSet[t.store] = true; });
+  var storeCount = Object.keys(storeSet).length;
+
+  document.getElementById('analysis-metrics').innerHTML =
+    '<div class="metric"><div class="val">'+mt.length+'</div><div class="lbl">瀹㈣瘔鎬绘暟</div></div>' +
+    '<div class="metric"><div class="val" style="color:#E24B4A">\u00a5'+totalDeduct.toLocaleString()+'</div><div class="lbl">鎵ｆ鍚堣</div></div>' +
+    '<div class="metric"><div class="val" style="color:#EF9F27">\u00a5'+totalExtra.toLocaleString()+'</div><div class="lbl">琛ヨ揣璐圭敤</div></div>' +
+    '<div class="metric"><div class="val">'+storeCount+'</div><div class="lbl">娑夊強闂ㄥ簵鏁?/div></div>';
+
+  // 鍥捐〃1锛氶棶棰樼被鍨嬪垎甯?
+  var typeCount = {};
+  mt.forEach(function(t){ typeCount[t.type] = (typeCount[t.type] || 0) + 1; });
+  var typeLabels = Object.keys(typeCount).sort(function(a, b){ return typeCount[b] - typeCount[a]; });
+
+  if(chartTypeI) chartTypeI.destroy();
+  var ctx1 = document.getElementById('chart-type');
+  if(ctx1){
+    chartTypeI = new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: typeLabels,
+        datasets: [{
+          data: typeLabels.map(function(l){ return typeCount[l]; }),
+          backgroundColor: ['#07C160','#378ADD','#EF9F27','#E24B4A','#7F77DD','#1D9E75','#D85A30','#888780']
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: function(ctx){ return ctx.label + ': ' + ctx.raw + ' 娆?(' + Math.round(ctx.raw/mt.length*100) + '%)'; } } }
+        }
+      }
+    });
+  }
+
+  // 鍥捐〃2锛氬悇闂ㄥ簵瀹㈣瘔鏁伴噺 Top10
+  var storeCountMap = {};
+  mt.forEach(function(t){ storeCountMap[t.store] = (storeCountMap[t.store] || 0) + 1; });
+  var storeLabels = Object.keys(storeCountMap).sort(function(a, b){ return storeCountMap[b] - storeCountMap[a]; }).slice(0, 10);
+
+  if(chartStoreC) chartStoreC.destroy();
+  var ctx2 = document.getElementById('chart-store-count');
+  if(ctx2){
+    chartStoreC = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: storeLabels,
+        datasets: [{ label: '瀹㈣瘔娆℃暟', data: storeLabels.map(function(l){ return storeCountMap[l]; }), backgroundColor: 'rgba(239,159,39,0.5)', borderColor: '#EF9F27', borderWidth: 1 }]
+      },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+  }
+
+  // 鍥捐〃3锛氬悇闂ㄥ簵鎵ｆ閲戦 Top10
+  var storeDeductMap = {};
+  mt.forEach(function(t){ storeDeductMap[t.store] = (storeDeductMap[t.store] || 0) + (t.deduct || 0); });
+  var storeDeductLabels = Object.keys(storeDeductMap).sort(function(a, b){ return storeDeductMap[b] - storeDeductMap[a]; }).slice(0, 10);
+
+  if(chartStoreD) chartStoreD.destroy();
+  var ctx3 = document.getElementById('chart-store-deduct');
+  if(ctx3){
+    chartStoreD = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: storeDeductLabels,
+        datasets: [{ label: '鎵ｆ閲戦', data: storeDeductLabels.map(function(l){ return storeDeductMap[l]; }), backgroundColor: 'rgba(226,75,74,0.5)', borderColor: '#E24B4A', borderWidth: 1 }]
+      },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+    });
+  }
+
+  // 鍥捐〃4锛氬璇夎秼鍔?
+  var dayCount = {};
+  mt.forEach(function(t){ dayCount[t.date] = (dayCount[t.date] || 0) + 1; });
+  var sortedDays = Object.keys(dayCount).sort();
+
+  if(chartTrendI) chartTrendI.destroy();
+  var ctx4 = document.getElementById('chart-trend');
+  if(ctx4){
+    chartTrendI = new Chart(ctx4, {
+      type: 'line',
+      data: {
+        labels: sortedDays,
+        datasets: [{ label: '姣忔棩瀹㈣瘔', data: sortedDays.map(function(d){ return dayCount[d]; }), borderColor: '#07C160', backgroundColor: 'rgba(7,193,96,0.1)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 6 }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+  }
+
+  // 鍥捐〃5锛氬璇夊晢鍝佹墸鍑忛噸閲?Top10
+  var productWeightMap = {};
+  mt.forEach(function(t){
+    var p = t.product || '鏈煡鍟嗗搧';
+    productWeightMap[p] = (productWeightMap[p] || 0) + (t.weight || 0);
+  });
+  var pwLabels = Object.keys(productWeightMap).sort(function(a, b){ return productWeightMap[b] - productWeightMap[a]; }).slice(0, 10);
+
+  if(chartProdW) chartProdW.destroy();
+  var ctx5 = document.getElementById('chart-product-weight');
+  if(ctx5){
+    chartProdW = new Chart(ctx5, {
+      type: 'bar',
+      data: {
+        labels: pwLabels,
+        datasets: [{ label: '鎵ｅ噺閲嶉噺(鏂?', data: pwLabels.map(function(l){ return productWeightMap[l]; }), backgroundColor: 'rgba(55,138,221,0.5)', borderColor: '#378ADD', borderWidth: 1 }]
+      },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+    });
+  }
+
+  // 鍥捐〃6锛氬璇夊晢鍝佹墸鍑忛噾棰?Top10
+  var productDeductMap = {};
+  mt.forEach(function(t){
+    var p = t.product || '鏈煡鍟嗗搧';
+    productDeductMap[p] = (productDeductMap[p] || 0) + (t.deduct || 0);
+  });
+  var pdLabels = Object.keys(productDeductMap).sort(function(a, b){ return productDeductMap[b] - productDeductMap[a]; }).slice(0, 10);
+
+  if(chartProdD) chartProdD.destroy();
+  var ctx6 = document.getElementById('chart-product-deduct');
+  if(ctx6){
+    chartProdD = new Chart(ctx6, {
+      type: 'bar',
+      data: {
+        labels: pdLabels,
+        datasets: [{ label: '鎵ｅ噺閲戦', data: pdLabels.map(function(l){ return productDeductMap[l]; }), backgroundColor: 'rgba(226,75,74,0.5)', borderColor: '#E24B4A', borderWidth: 1 }]
+      },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+    });
+  }
+
+  // 闂ㄥ簵鏄庣粏琛?
+  var storeDetail = {};
+  mt.forEach(function(t){
+    if(!storeDetail[t.store]) storeDetail[t.store] = { count: 0, deduct: 0, extraCost: 0, types: {} };
+    storeDetail[t.store].count++;
+    storeDetail[t.store].deduct += t.deduct || 0;
+    storeDetail[t.store].extraCost += t.extraCost || 0;
+    storeDetail[t.store].types[t.type] = (storeDetail[t.store].types[t.type] || 0) + 1;
+  });
+  var ranked = [];
+  for(var store in storeDetail) ranked.push([store, storeDetail[store]]);
+  ranked.sort(function(a, b){ return b[1].deduct - a[1].deduct; });
+
+  var html = '<table><tr><th>闂ㄥ簵</th><th>瀹㈣瘔娆℃暟</th><th>鎵ｆ鍚堣</th><th>琛ヨ揣璐圭敤</th><th>涓昏闂绫诲瀷</th></tr>';
+  ranked.forEach(function(item){
+    var store = item[0], d = item[1];
+    var typeEntries = [];
+    for(var tp in d.types) typeEntries.push([tp, d.types[tp]]);
+    typeEntries.sort(function(a, b){ return b[1] - a[1]; });
+    var topType = typeEntries[0];
+    html += '<tr>';
+    html += '<td><strong>'+store+'</strong></td>';
+    html += '<td>'+d.count+' 娆?/td>';
+    html += '<td class="money">\u00a5'+d.deduct.toLocaleString()+'</td>';
+    html += '<td class="money">'+(d.extraCost > 0 ? '\u00a5'+d.extraCost.toLocaleString() : '\u2014')+'</td>';
+    html += '<td>'+(topType ? topType[0]+' ('+topType[1]+'娆?' : '\u2014')+'</td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  if(ranked.length === 0) html = '<div class="empty-state"><p>璇ユ棩鏈熷尯闂存殏鏃犲璇夋暟鎹?/p></div>';
+  document.getElementById('analysis-table').innerHTML = html;
+
+  // 鍟嗗搧鏄庣粏琛?
+  var productDetail = {};
+  mt.forEach(function(t){
+    var p = t.product || '鏈煡鍟嗗搧';
+    if(!productDetail[p]) productDetail[p] = { count: 0, weight: 0, deduct: 0, types: {} };
+    productDetail[p].count++;
+    productDetail[p].weight += t.weight || 0;
+    productDetail[p].deduct += t.deduct || 0;
+    productDetail[p].types[t.type] = (productDetail[p].types[t.type] || 0) + 1;
+  });
+  var pRanked = [];
+  for(var prod in productDetail) pRanked.push([prod, productDetail[prod]]);
+  pRanked.sort(function(a, b){ return b[1].deduct - a[1].deduct; });
+
+  var phtml = '<table><tr><th>鍟嗗搧</th><th>瀹㈣瘔娆℃暟</th><th>鎵ｅ噺閲嶉噺(鏂?</th><th>鎵ｆ鍚堣</th><th>涓昏闂绫诲瀷</th></tr>';
+  pRanked.forEach(function(item){
+    var prod = item[0], d = item[1];
+    var typeEntries = [];
+    for(var tp in d.types) typeEntries.push([tp, d.types[tp]]);
+    typeEntries.sort(function(a, b){ return b[1] - a[1]; });
+    var topType = typeEntries[0];
+    phtml += '<tr>';
+    phtml += '<td><strong>'+prod+'</strong></td>';
+    phtml += '<td>'+d.count+' 娆?/td>';
+    phtml += '<td>'+d.weight.toFixed(1)+' 鏂?/td>';
+    phtml += '<td class="money">\u00a5'+d.deduct.toLocaleString()+'</td>';
+    phtml += '<td>'+(topType ? topType[0]+' ('+topType[1]+'娆?' : '\u2014')+'</td>';
+    phtml += '</tr>';
+  });
+  phtml += '</table>';
+  if(pRanked.length === 0) phtml = '<div class="empty-state"><p>鏆傛棤鍟嗗搧瀹㈣瘔鏁版嵁</p></div>';
+  document.getElementById('analysis-product-table').innerHTML = phtml;
+}
+
+function exportAnalysisCSV(){
+  var dateStart = document.getElementById('analysis-date-start').value;
+  var dateEnd = document.getElementById('analysis-date-end').value;
+  var mt = tickets;
+  if(dateStart) mt = mt.filter(function(t){ return t.date >= dateStart; });
+  if(dateEnd) mt = mt.filter(function(t){ return t.date <= dateEnd; });
+  var label = (dateStart || dateEnd) ? (dateStart || '璧峰') + '_' + (dateEnd || '鑷充粖') : '鍏ㄩ儴';
+
+  var storeDetail = {};
+  mt.forEach(function(t){
+    if(!storeDetail[t.store]) storeDetail[t.store] = { count: 0, deduct: 0, extraCost: 0, types: {} };
+    storeDetail[t.store].count++;
+    storeDetail[t.store].deduct += t.deduct || 0;
+    storeDetail[t.store].extraCost += t.extraCost || 0;
+    storeDetail[t.store].types[t.type] = (storeDetail[t.store].types[t.type] || 0) + 1;
+  });
+  var csv = '\uFEFF闂ㄥ簵,瀹㈣瘔娆℃暟,鎵ｆ鍚堣,琛ヨ揣璐圭敤,涓昏闂\n';
+  var ranked = [];
+  for(var store in storeDetail) ranked.push([store, storeDetail[store]]);
+  ranked.sort(function(a, b){ return b[1].deduct - a[1].deduct; });
+  ranked.forEach(function(item){
+    var store = item[0], d = item[1];
+    var typeEntries = [];
+    for(var tp in d.types) typeEntries.push([tp, d.types[tp]]);
+    typeEntries.sort(function(a, b){ return b[1] - a[1]; });
+    var topType = typeEntries[0];
+    csv += [store, d.count, d.deduct, d.extraCost, topType ? topType[0] : ''].join(',') + '\n';
+  });
+  downloadFile(csv, label + '_瀹㈣瘔鍒嗘瀽.csv', 'text/csv;charset=utf-8');
+}
+
+// ============ 鐢熸垚鍒嗕韩鎶ュ憡 ============
+function generateReport(){
+  var dataJSON = JSON.stringify(tickets);
+  var cssText = document.querySelector('style').textContent;
+  
+  var html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>瀹㈣瘔闂鍒嗘瀽鎶ュ憡</title>\n';
+  html += '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>\n';
+  html += '<style>\n' + cssText + '\n';
+  html += '.report-header{background:#fff;padding:20px 24px;text-align:center;border-bottom:2px solid #07C160}\n';
+  html += '.report-header h1{font-size:22px;color:#07C160}\n';
+  html += '.report-header .meta{font-size:13px;color:#999;margin-top:6px}\n';
+  html += '<\/style>\n</head>\n<body>\n';
+  html += '<div class="report-header"><h1>瀹㈣瘔闂鍒嗘瀽鎶ュ憡</h1><div class="meta" id="rmeta"></div></div>\n';
+  html += '<div class="content">\n';
+  html += '<div class="toolbar"><label>閫夋嫨鏃ユ湡鍖洪棿锛?/label><input type="date" id="ds"><span>鑷?/span><input type="date" id="de"><button class="btn btn-primary" id="queryBtn">鏌ヨ</button><span class="spacer"></span><small style="color:#999">鎶ュ憡鐢熸垚鏃堕棿锛? + new Date().toLocaleString('zh-CN') + '</small></div>\n';
+  html += '<div class="metrics-row" id="am"></div>\n';
+  html += '<div class="chart-row"><div class="chart-box"><h4>闂绫诲瀷鍒嗗竷</h4><canvas id="c1"></canvas></div><div class="chart-box"><h4>瀹㈣瘔瓒嬪娍</h4><canvas id="c4"></canvas></div></div>\n';
+  html += '<div class="chart-row"><div class="chart-box"><h4>鍚勯棬搴楀璇夋暟閲?(Top10)</h4><canvas id="c2"></canvas></div><div class="chart-box"><h4>鍚勯棬搴楁墸娆鹃噾棰?(Top10)</h4><canvas id="c3"></canvas></div></div>\n';
+  html += '<div class="chart-row"><div class="chart-box"><h4>瀹㈣瘔鍟嗗搧鎵ｅ噺閲嶉噺 (Top10)</h4><canvas id="c5"></canvas></div><div class="chart-box"><h4>瀹㈣瘔鍟嗗搧鎵ｅ噺閲戦 (Top10)</h4><canvas id="c6"></canvas></div></div>\n';
+  html += '<div class="card"><h3>闂ㄥ簵瀹㈣瘔鏄庣粏琛?/h3><div id="at"></div></div>\n';
+  html += '<div class="card"><h3>鍟嗗搧瀹㈣瘔鏄庣粏琛?/h3><div id="apt"></div></div>\n';
+  html += '</div>\n';
+  html += '<script>\n';
+  html += '(function(){\n';
+  html += '"use strict";\n';
+  html += 'var TICKETS = ' + dataJSON + ';\n';
+  html += 'var charts = {};\n';
+  html += 'function destroyChart(id){if(charts[id]){charts[id].destroy();charts[id]=null;}}\n';
+  html += 'function withCtx(id,fn){var el=document.getElementById(id);if(!el)return null;var c=el.getContext("2d");return fn(c);}\n';
+  html += 'var today=new Date().toISOString().slice(0,10);\n';
+  html += 'document.getElementById("ds").value=today.slice(0,8)+"01";\n';
+  html += 'document.getElementById("de").value=today;\n';
+  html += 'document.getElementById("rmeta").textContent="鏁版嵁鑼冨洿锛?+(TICKETS.length>0?TICKETS[0].date:"鈥?)+" ~ "+(TICKETS.length>0?TICKETS[TICKETS.length-1].date:"鈥?)+" | 鍏?"+TICKETS.length+" 鏉″伐鍗?;\n';
+  html += 'function msum(arr,key){return arr.reduce(function(s,t){return s+(t[key]||0)},0);}\n';
+  html += 'function topKeys(obj,n){return Object.keys(obj).sort(function(a,b){return obj[b]-obj[a]}).slice(0,n||10);}\n';
+  html += 'function topEntries(obj,n){return topKeys(obj,n).map(function(k){return [k,obj[k]]});}\n';
+  html += 'function makeHBar(ctx,labels,values,label,color){return new Chart(ctx,{type:"bar",data:{labels:labels,datasets:[{label:label,data:values,backgroundColor:color[0],borderColor:color[1],borderWidth:1}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});}\n';
+  html += 'function render(){\n';
+  html += '  var ds=document.getElementById("ds").value, de=document.getElementById("de").value;\n';
+  html += '  var mt=TICKETS.slice();\n';
+  html += '  if(ds) mt=mt.filter(function(t){return t.date>=ds});\n';
+  html += '  if(de) mt=mt.filter(function(t){return t.date<=de});\n';
+  html += '  var td=msum(mt,"deduct"), te=msum(mt,"extraCost");\n';
+  html += '  var ss={};mt.forEach(function(t){ss[t.store]=1});\n';
+  html += '  document.getElementById("am").innerHTML="<div class=\\"metric\\"><div class=\\"val\\">"+mt.length+"</div><div class=\\"lbl\\">瀹㈣瘔鎬绘暟</div></div><div class=\\"metric\\"><div class=\\"val\\" style=\\"color:#E24B4A\\">\\u00a5"+td.toLocaleString()+"</div><div class=\\"lbl\\">鎵ｆ鍚堣</div></div><div class=\\"metric\\"><div class=\\"val\\" style=\\"color:#EF9F27\\">\\u00a5"+te.toLocaleString()+"</div><div class=\\"lbl\\">琛ヨ揣璐圭敤</div></div><div class=\\"metric\\"><div class=\\"val\\">"+Object.keys(ss).length+"</div><div class=\\"lbl\\">娑夊強闂ㄥ簵鏁?/div></div>";\n';
+  html += '  if(mt.length===0){["at","apt"].forEach(function(id){document.getElementById(id).innerHTML="<div class=\\"empty-state\\"><p>璇ユ棩鏈熷尯闂存殏鏃犲璇夋暟鎹?/p></div>";});return;}\n';
+  html += '  var tc={};mt.forEach(function(t){tc[t.type]=(tc[t.type]||0)+1});var tl=topKeys(tc);destroyChart("c1");\n';
+  html += '  withCtx("c1",function(ctx){charts["c1"]=new Chart(ctx,{type:"doughnut",data:{labels:tl,datasets:[{data:tl.map(function(l){return tc[l]}),backgroundColor:["#07C160","#378ADD","#EF9F27","#E24B4A","#7F77DD","#1D9E75","#D85A30","#888780"]}]},options:{plugins:{legend:{position:"bottom"}}}});});\n';
+  html += '  var sc={};mt.forEach(function(t){sc[t.store]=(sc[t.store]||0)+1});var scl=topKeys(sc);destroyChart("c2");\n';
+  html += '  withCtx("c2",function(ctx){charts["c2"]=makeHBar(ctx,scl,scl.map(function(l){return sc[l]}),"瀹㈣瘔娆℃暟",["rgba(239,159,39,0.5)","#EF9F27"]);});\n';
+  html += '  var sd={};mt.forEach(function(t){sd[t.store]=(sd[t.store]||0)+(t.deduct||0)});var sdl=topKeys(sd);destroyChart("c3");\n';
+  html += '  withCtx("c3",function(ctx){charts["c3"]=makeHBar(ctx,sdl,sdl.map(function(l){return sd[l]}),"鎵ｆ閲戦",["rgba(226,75,74,0.5)","#E24B4A"]);});\n';
+  html += '  var dc={};mt.forEach(function(t){dc[t.date]=(dc[t.date]||0)+1});var dl=Object.keys(dc).sort();destroyChart("c4");\n';
+  html += '  withCtx("c4",function(ctx){charts["c4"]=new Chart(ctx,{type:"line",data:{labels:dl,datasets:[{label:"姣忔棩瀹㈣瘔",data:dl.map(function(d){return dc[d]}),borderColor:"#07C160",backgroundColor:"rgba(7,193,96,0.1)",fill:true,tension:0.3,pointRadius:3}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});});\n';
+  html += '  var pw={};mt.forEach(function(t){var p=t.product||"鏈煡";pw[p]=(pw[p]||0)+(t.weight||0)});var pwl=topKeys(pw);destroyChart("c5");\n';
+  html += '  withCtx("c5",function(ctx){charts["c5"]=makeHBar(ctx,pwl,pwl.map(function(l){return pw[l]}),"鎵ｅ噺閲嶉噺(鏂?",["rgba(55,138,221,0.5)","#378ADD"]);});\n';
+  html += '  var pdmap={};mt.forEach(function(t){var p=t.product||"鏈煡";pdmap[p]=(pdmap[p]||0)+(t.deduct||0)});var pdl=topKeys(pdmap);destroyChart("c6");\n';
+  html += '  withCtx("c6",function(ctx){charts["c6"]=makeHBar(ctx,pdl,pdl.map(function(l){return pdmap[l]}),"鎵ｅ噺閲戦",["rgba(226,75,74,0.5)","#E24B4A"]);});\n';
+  html += '  var sd2={};mt.forEach(function(t){if(!sd2[t.store])sd2[t.store]={count:0,deduct:0,extraCost:0,types:{}};sd2[t.store].count++;sd2[t.store].deduct+=t.deduct||0;sd2[t.store].extraCost+=t.extraCost||0;sd2[t.store].types[t.type]=(sd2[t.store].types[t.type]||0)+1});\n';
+  html += '  var rk=Object.keys(sd2).map(function(k){return[k,sd2[k]]}).sort(function(a,b){return b[1].deduct-a[1].deduct});\n';
+  html += '  var th="<table><tr><th>闂ㄥ簵</th><th>瀹㈣瘔娆℃暟</th><th>鎵ｆ鍚堣</th><th>琛ヨ揣璐圭敤</th><th>涓昏闂绫诲瀷</th></tr>";\n';
+  html += '  rk.forEach(function(it){var s=it[0],d=it[1];var te=topEntries(d.types,1);var tt=te[0];th+="<tr><td><strong>"+s+"</strong></td><td>"+d.count+" 娆?/td><td class=\\"money\\">\\u00a5"+d.deduct.toLocaleString()+"</td><td class=\\"money\\">"+(d.extraCost>0?"\\u00a5"+d.extraCost.toLocaleString():"\\u2014")+"</td><td>"+(tt?tt[0]+" ("+tt[1]+"娆?":"\\u2014")+"</td></tr>"});th+="</table>";\n';
+  html += '  document.getElementById("at").innerHTML=th;\n';
+  html += '  var pd2={};mt.forEach(function(t){var p=t.product||"鏈煡";if(!pd2[p])pd2[p]={count:0,weight:0,deduct:0,types:{}};pd2[p].count++;pd2[p].weight+=t.weight||0;pd2[p].deduct+=t.deduct||0;pd2[p].types[t.type]=(pd2[p].types[t.type]||0)+1});\n';
+  html += '  var prk=Object.keys(pd2).map(function(k){return[k,pd2[k]]}).sort(function(a,b){return b[1].deduct-a[1].deduct});\n';
+  html += '  var pth="<table><tr><th>鍟嗗搧</th><th>瀹㈣瘔娆℃暟</th><th>鎵ｅ噺閲嶉噺(鏂?</th><th>鎵ｆ鍚堣</th><th>涓昏闂绫诲瀷</th></tr>";\n';
+  html += '  prk.forEach(function(it){var p=it[0],d=it[1];var te=topEntries(d.types,1);var tt=te[0];pth+="<tr><td><strong>"+p+"</strong></td><td>"+d.count+" 娆?/td><td>"+d.weight.toFixed(1)+" 鏂?/td><td class=\\"money\\">\\u00a5"+d.deduct.toLocaleString()+"</td><td>"+(tt?tt[0]+" ("+tt[1]+"娆?":"\\u2014")+"</td></tr>"});pth+="</table>";\n';
+  html += '  document.getElementById("apt").innerHTML=pth;\n';
+  html += '}\n';
+  html += 'document.getElementById("queryBtn").addEventListener("click",render);\n';
+  html += 'render();\n';
+  html += '})();\n';
+  html += '<\/script>\n</body>\n</html>';
+
+  downloadFile(html, '瀹㈣瘔闂鍒嗘瀽鎶ュ憡_' + new Date().toISOString().slice(0,10) + '.html', 'text/html;charset=utf-8');
+  showToast('鎶ュ憡宸茬敓鎴愶紝鍙洿鎺ュ彂閫佺粰棰嗗鏌ョ湅锛?, 'success');
+}
+
+// ============ 鍒濆鍖?============
+async function init(){
+  await loadTickets();
+  await seed();
+  renderEntry();
+
+  // 璁剧疆榛樿鏃ユ湡鍖洪棿
+  var today = new Date().toISOString().slice(0, 10);
+  document.getElementById('f-date').value = today;
+  document.getElementById('analysis-date-start').value = today.slice(0, 8) + '01';
+  document.getElementById('analysis-date-end').value = today;
+
+  // 鐐瑰嚮寮圭獥鑳屾櫙鍏抽棴
+  document.querySelectorAll('.modal-overlay').forEach(function(el){
+    el.addEventListener('click', function(e){
+      if(e.target === el) el.classList.remove('show');
+    });
+  });
+
+  // 鑷姩鍒锋柊锛氭瘡30绉掍粠鏈嶅姟鍣ㄦ媺涓€娆℃暟鎹?
+  setInterval(async function(){
+    try {
+      var result = await apiGet('/api/tickets');
+      if(result.data && result.data.length !== tickets.length){
+        tickets = result.data || [];
+        document.getElementById('ticket-count-badge').textContent = tickets.length + ' 鏉″伐鍗?;
+        var activeTab = document.querySelector('.page.active');
+        if(activeTab && activeTab.id === 'page-list') renderList();
+      }
+    } catch(e){ /* 闈欓粯澶辫触 */ }
+  }, 30000);
+}
+
+init();
+</script>
+
+</body>
+</html>
