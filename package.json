@@ -1,0 +1,13 @@
+{
+  "name": "complaint-tracker",
+  "version": "1.0.0",
+  "description": "瀹㈣瘔缁熻宸ュ叿 - 澶氫汉鍏变韩鐗堬紙闂ㄥ簵瀹㈣瘔宸ュ崟褰曞叆 + 鍙鍖栧垎鏋愶級",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
